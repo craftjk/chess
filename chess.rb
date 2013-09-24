@@ -15,10 +15,13 @@ class Game
       @board.display
 
       successful_move = false
-      until successful_move
+      begin #until successful_move
         start_pos, end_pos = @current_player.move_prompt
-        successful_move = @board.move(start_pos, end_pos, @current_player)
+        successful_move = @board.move(start_pos, end_pos, @current_player.team_color)
         break if @board.checkmate?
+      rescue ArgumentError => e #end
+        puts "Invalid move. #{e.message}"
+        retry
       end
       switch_players
     end
@@ -99,7 +102,7 @@ class Board
 
   end
 
-  def move(pos1, pos2, team_color)
+  def move(pos1, pos2, current_player)
 
     squares_dup = @squares.dup
 
@@ -118,7 +121,7 @@ class Board
     target_contents = origin_contents
     squares_dup[pos1[0]][pos1[1]] = nil
 
-    if square_dup.check?
+    if check?(squares_dup)
       raise ArgumentError.new "You are still in check, try again."
       return false
     elsif !target_contents.valid_move?(pos1, pos2)
@@ -131,30 +134,43 @@ class Board
     end
   end
 
-  def checkmate?#(player)
-    false # placeholder
-  end
-
-  def check?#(player)
+  def checkmate?#(current_player)
     false
   end
 
+  def check?(current_player)
+    false
+  end
+
+
   def display
+    puts
     @squares.each_with_index do |row, row_index|
       row.each_index do |col_index|
         square_contents = @squares[row_index][col_index]
         if square_contents.nil?
-          print " _ "
+          print " __ "
         else
           color = square_contents.color.to_s.upcase
           type = square_contents.class.to_s.upcase
-          print " #{SYMBOLS[color][type]} "
+          print " #{SYMBOLS[color][type]}  "
         end
       end
       puts
     end
+    puts
   end
 
+
+  def find_king(current_player)
+    @squares.each_with_index do |row, row_index|
+      row.each_with_index do |square_contents, col_index|
+        if square_contents.color == current_player.team_color && square_contents.is_a?(King)
+          return [row_index, col_index]
+        end
+      end
+    end
+  end
 end
 
 class Player
