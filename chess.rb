@@ -102,7 +102,7 @@ class Board
 
   end
 
-  def move(pos1, pos2, current_player)
+  def move(pos1, pos2, team_color)
 
     squares_dup = @squares.dup
 
@@ -112,7 +112,7 @@ class Board
     if origin_contents.nil?
       raise ArgumentError.new "No piece at this location, pick again."
       return false
-    elsif origin_contents.color != current_player.team_color
+    elsif origin_contents.color != team_color
       raise ArgumentError.new "Wrong team, pick again."
       return false
     end
@@ -134,11 +134,11 @@ class Board
     end
   end
 
-  def checkmate?#(current_player)
+  def checkmate?#(team_color)
     false
   end
 
-  def check?(current_player)
+  def check?(team_color)
     false
   end
 
@@ -162,15 +162,17 @@ class Board
   end
 
 
-  def find_king(current_player)
+  def find_king(team_color)
     @squares.each_with_index do |row, row_index|
       row.each_with_index do |square_contents, col_index|
-        if square_contents.color == current_player.team_color && square_contents.is_a?(King)
+        next if square_contents.nil?
+        if square_contents.color == team_color && square_contents.is_a?(King)
           return [row_index, col_index]
         end
       end
     end
   end
+
 end
 
 class Player
