@@ -25,7 +25,6 @@ class Game
     display_results
   end
 
-
   private
 
     def game_finished?
@@ -61,6 +60,26 @@ end
 
 class Board
 
+  SYMBOLS = {
+    "BLACK" => {
+      "KING" => "\u265A",
+      "QUEEN" => "\u265B",
+      "ROOK" => "\u265C",
+      "BISHOP" => "\u265D",
+      "KNIGHT" => "\u265E",
+      "PAWN" => "\u265F"
+    },
+
+    "WHITE" => {
+      "KING" => "\u2654",
+      "QUEEN" => "\u2655",
+      "ROOK" => "\u2656",
+      "BISHOP" => "\u2657",
+      "KNIGHT" => "\u2658",
+      "PAWN" => "\u2659"
+    }
+  }
+
   attr_accessor :squares
 
   def initialize
@@ -82,25 +101,53 @@ class Board
 
      team_color = :white
      @squares[7][0], @squares[7][7] = Rook.new(team_color), Rook.new(team_color)
-     @squares[7][1], @squares[7][6] = Knight.new(team_color), Rook.new(team_color)
+     @squares[7][1], @squares[7][6] = Knight.new(team_color), Knight.new(team_color)
      @squares[7][2], @squares[7][5] = Bishop.new(team_color), Bishop.new(team_color)
-     @squares[7][3] =                 King.new(team_color)
-     @squares[7][4] =                 Queen.new(team_color)
+     @squares[7][3] =                 Queen.new(team_color)
+     @squares[7][4] =                 King.new(team_color)
      (0..7).each { |col| @squares[6][col] = Pawn.new(team_color) }
 
   end
 
   def move(pos1, pos2)
+    #  raise error and return false if...
+    #     if attempted move will place you in check
+    #     if your pos1 has no pieces
+    #     if you try to move the wrong piece
+    #
+    @squares[pos2[0]][pos2[1]] = @squares[pos1[0]][pos1[1]]
+    #
+    #  raise error and return false if...
+    #     if it's not a valid move (check if pos2 is in valid moves array)
+    #     if you are still in check after the move
+
+    #  update board with the piece in its new location
+
+    return true
   end
 
   def checkmate?(player)
+    return false # placeholder
   end
 
   def check?(player)
   end
 
-
-
+  def display
+    @squares.each_with_index do |row, row_index|
+      row.each_index do |col_index|
+        square_contents = @squares[row_index][col_index]
+        if square_contents.nil?
+          print " "
+        else
+          color = square_contents.color.to_s.upcase
+          type = square_contents.class.to_s.upcase
+          print SYMBOLS[color][type]
+        end
+      end
+      puts
+    end
+  end
 
 end
 
@@ -134,28 +181,10 @@ module Stepper
 end
 
 class Piece
+  attr_accessor :color
 
-  BLACK_PIECES = {
-    "KING" => "\u265A",
-    "QUEEN" => "\u265B",
-    "ROOK" => "\u265C",
-    "BISHOP" => "\u265D",
-    "KNIGHT" => "\u265E",
-    "PAWN" => "\u265F"
-  }
-
-  WHITE_PIECES = {
-    "KING" => "\u2654",
-    "QUEEN" => "\u2655",
-    "ROOK" => "\u2656",
-    "BISHOP" => "\u2657",
-    "KNIGHT" => "\u2658",
-    "PAWN" => "\u2659"
-  }
-
-  def initialize
-    @position
-    @color
+  def initialize(team_color)
+    @color = team_color
   end
 
 
@@ -167,8 +196,8 @@ end
 
 class Pawn < Piece
 
-  def initialize(color, pos)
-    super(color, pos)
+  def initialize(color)
+    super(color)
   end
 
   def move_dir
@@ -180,8 +209,8 @@ end
 class Rook < Piece
   include Slider
 
-  def initialize(color, pos)
-    super(color, pos)
+  def initialize(color)
+    super(color)
   end
 
   def move_dir
@@ -193,8 +222,8 @@ end
 class Bishop < Piece
   include Slider
 
-  def initialize(color, pos)
-    super(color, pos)
+  def initialize(color)
+    super(color)
   end
 
   def move_dir
@@ -206,8 +235,8 @@ end
 class Knight < Piece
   include Stepper
 
-  def initialize(color, pos)
-    super(color, pos)
+  def initialize(color)
+    super(color)
   end
 
   def move_dir
@@ -219,8 +248,8 @@ end
 class King < Piece
   include Stepper
 
-  def initialize(color, pos)
-    super(color, pos)
+  def initialize(color)
+    super(color)
   end
 
   def move_dir
@@ -232,8 +261,8 @@ end
 class Queen < Piece
   include Slider
 
-  def initialize(color, pos)
-    super(color, pos)
+  def initialize(color)
+    super(color)
   end
 
   def move_dir
