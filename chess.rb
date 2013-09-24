@@ -17,7 +17,7 @@ class Game
       successful_move = false
       until successful_move
         start_pos, end_pos = @current_player.move_prompt
-        successful_move = @board.move(start_pos, end_pos)
+        successful_move = @board.move(start_pos, end_pos, @current_player)
         break if @board.checkmate?
       end
       switch_players
@@ -43,16 +43,6 @@ class Game
 
     def welcome
       puts "welcome to chess"
-    end
-
-    def move_prompt
-      # prompt player to suppy start and end coordinates
-      puts "#{@current_player.name}'s turn. Please move. (e.g. 1,2 2,2)"
-      start_position, end_position = gets.chomp.split
-      #  add error checking
-      start_position = start_position.split(",").map(&:to_i)
-      end_position = end_position.split(",").map(&:to_i)
-      return [start_position, end_position]
     end
 
 end
@@ -109,28 +99,44 @@ class Board
 
   end
 
-  def move(pos1, pos2)
-    #  raise error and return false if...
-    #     if attempted move will place you in check
-    #     if your pos1 has no pieces
-    #     if you try to move the wrong piece
-    #
-    @squares[pos2[0]][pos2[1]] = @squares[pos1[0]][pos1[1]]
-    #
-    #  raise error and return false if...
-    #     if it's not a valid move (check if pos2 is in valid moves array)
-    #     if you are still in check after the move
+  def move(pos1, pos2, team_color)
 
-    #  update board with the piece in its new location
+    squares_dup = @squares.dup
 
-    return true
+    origin_contents = squares_dup[pos1[0]][pos1[1]]
+    target_contents = squares_dup[pos2[0]][pos2[1]]
+
+    if origin_contents.nil?
+      raise ArgumentError.new "No piece at this location, pick again."
+      return false
+    elsif origin_contents.color != current_player.team_color
+      raise ArgumentError.new "Wrong team, pick again."
+      return false
+    end
+
+    # try the move to test for check and checkmate
+    target_contents = origin_contents
+    squares_dup[pos1[0]][pos1[1]] = nil
+
+    if square_dup.check?
+      raise ArgumentError.new "You are still in check, try again."
+      return false
+    elsif !target_contents.valid_move?(pos1, pos2)
+      raise ArgumentError.new "Invalid move."
+      return false
+    else
+      # perform the move
+      @squares[pos2[0]][pos2[1]] = @squares[pos1[0]][pos1[1]]
+      true
+    end
   end
 
-  def checkmate?(player)
-    return false # placeholder
+  def checkmate?#(player)
+    false # placeholder
   end
 
-  def check?(player)
+  def check?#(player)
+    false
   end
 
   def display
@@ -138,11 +144,11 @@ class Board
       row.each_index do |col_index|
         square_contents = @squares[row_index][col_index]
         if square_contents.nil?
-          print " "
+          print " _ "
         else
           color = square_contents.color.to_s.upcase
           type = square_contents.class.to_s.upcase
-          print SYMBOLS[color][type]
+          print " #{SYMBOLS[color][type]} "
         end
       end
       puts
@@ -152,10 +158,24 @@ class Board
 end
 
 class Player
+
+  attr_reader :name, :team_color
+
   def initialize(team_color, name)
     @team_color = team_color
     @name = name
   end
+
+  def move_prompt
+    # prompt player to suppy start and end coordinates
+    puts "#{self.team_color.capitalize}'s turn. Please move. (e.g. 1,2 2,2)"
+    start_position, end_position = gets.chomp.split
+    #  add error checking
+    start_position = start_position.split(",").map(&:to_i)
+    end_position = end_position.split(",").map(&:to_i)
+    return [start_position, end_position]
+  end
+
 end
 
 
