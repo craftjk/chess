@@ -1,3 +1,5 @@
+require "debugger"
+
 class Game
 
   attr_accessor :board
@@ -17,9 +19,9 @@ class Game
       begin
         start_pos, end_pos = @current_player.move_prompt
         @board.move(start_pos, end_pos, @current_player.team_color)
-        break if @board.checkmate?
+        break if @board.checkmate?(@current_player.team_color)
       rescue ArgumentError => e #end
-        puts "Invalid move. #{e.message}"
+        p "#{e}"
         retry
       end
       switch_players
@@ -89,7 +91,7 @@ class Board
      @squares[0][2], @squares[0][5] = Bishop.new(team_color), Bishop.new(team_color)
      @squares[0][3] =                 Queen.new(team_color)
      @squares[0][4] =                 King.new(team_color)
-     #(0..7).each { |col| @squares[1][col] = Pawn.new(team_color) }
+     (0..7).each { |col| @squares[1][col] = Pawn.new(team_color) }
 
      team_color = :white
      @squares[7][0], @squares[7][7] = Rook.new(team_color), Rook.new(team_color)
@@ -97,7 +99,7 @@ class Board
      @squares[7][2], @squares[7][5] = Bishop.new(team_color), Bishop.new(team_color)
      @squares[7][3] =                 Queen.new(team_color)
      @squares[7][4] =                 King.new(team_color)
-     #(0..7).each { |col| @squares[6][col] = Pawn.new(team_color) }
+     (0..7).each { |col| @squares[6][col] = Pawn.new(team_color) }
 
   end
 
@@ -105,27 +107,26 @@ class Board
 
     pre_move_validation(pos1, pos2, team_color)
     # try the move to test for check and checkmate
-    target_contents = origin_contents
+    #target_contents = origin_contents
 
     # squares_dup[pos1[0]][pos1[1]] = nil
-    post_validation(pos1, pos2, team_color)
+    #post_validation(pos1, pos2, team_color)
 
   end
 
   def pre_move_validation(pos1, pos2, team_color)
-    origin_contents = @squares[pos1[0]][pos1[1]]
-    target_contents = @squares[pos2[0]][pos2[1]]
-    if origin_contents.nil?
+
+    if self[pos1].nil?
       raise ArgumentError.new "No piece at this location, pick again."
-    elsif origin_contents.color != team_color
+    elsif self[pos1].color != team_color
       raise ArgumentError.new "Wrong team, pick again."
-    elsif !target_contents.nil? && target_contents.color == team_color
+    elsif !self[pos2].nil? && self[pos2].color == team_color
       raise ArgumentError.new "Can't move onto your own piece, pick again."
     elsif !valid_move?(pos1, pos2, team_color)
       raise ArgumentError.new "Invalid move."
     else
-      @squares[pos2[0]][pos2[1]] = @squares[pos1[0]][pos1[1]]
-      @squares[pos1[0]][pos1[1]] = nil
+      self[pos2] = self[pos1]
+      self[pos1] = nil
     end
 
   end
@@ -136,21 +137,48 @@ class Board
     if check?(squares_dup)
       #raise ArgumentError.new "You are still in check, try again."
     else # perform the move on the original board
-      @squares[pos2[0]][pos2[1]] = @squares[pos1[0]][pos1[1]]
-      @squares[pos1[0]][pos1[1]] = nil
+      self[pos2] = self[pos1]
+      self[pos1] = nil
     end
   end
 
   def valid_moves(pos1, team_color)
-    piece = @squares[pos1[0]][pos1[1]]
-    test_moves = piece.potential_moves(pos1)
-    test_moves.delete_if do |test_pos|
-      @squares[test_pos[0]][test_pos[1]].is_a?(Piece) && @squares[test_pos[0]][test_pos[1]].color == team_color
+
+    piece = self[pos1]
+    test_moves = piece.potential_moves(pos1, team_color)
+
+    # pawn goes first because it is exceptional
+    if piece.is_a?(Pawn)
+      invalid_moves = []
+
+      invalid_moves << test_moves[0] if !self[test_moves[0]].nil?
+
+      if !self[test_moves[1]].nil? || !path_is_clear?(pos1, test_moves[1])
+        invalid_moves << test_moves[1]
+      end
+
+      if piece.color == :black
+        invalid_moves << test_moves[1] if pos1[0] != 1
+      end
+
+      if piece.color == :white
+        invalid_moves << test_moves[1] if pos1[0] != 6
+      end
+
+      if self[test_moves[2]].nil? || self[test_moves[2]].color == team_color
+        invalid_moves << test_moves[2]
+      end
+      if self[test_moves[3]].nil? || self[test_moves[3]].color == team_color
+        invalid_moves << test_moves[3]
+      end
+
+      test_moves.delete_if{ |move| invalid_moves.include?(move) }
+
     end
 
-    if piece.is_a?(Pawn)
-      #  test_moves.delete_if(# delete diagonal moves if there's no opponent piece there)
-      #  test_moves.delete_if(# delete double move if not first move)
+    # delete if moving onto your own piece
+    test_moves.delete_if do |test_pos|
+      self[test_pos].is_a?(Piece) && self[test_pos].color == team_color
     end
 
     if piece.is_a?(Slider)
@@ -160,9 +188,8 @@ class Board
 
     #move doesn't skip over a piece (if slider)
     #test_moves.delete_if(#move doesn't skip over a piece)
-    # test_moves.delete_if(#moving onto your own piece)
-    # test_moves.delete_if(#king is in check after move)
 
+    # test_moves.delete_if(#king is in check after move)
     test_moves
   end
 
@@ -176,7 +203,6 @@ class Board
 
     # new_pos = new_pos_row, new_pos_col
     until [new_pos_row, new_pos_col] == pos2
-      p @squares[new_pos_row][new_pos_col].is_a?(Piece)
       return false if @squares[new_pos_row][new_pos_col].is_a?(Piece)
       new_pos_row += drow
       new_pos_col += dcol
@@ -192,13 +218,13 @@ class Board
 
 
   def checkmate?(team_color)
-    king = find_king(team_color)
+    # king = find_king(team_color)
 
     #  1) king is in check
     #  3) none of his pieces can move between him and the attacker so that he's no longer in check'
     # => loop through every other piece and see if a valid move from them puts them in between
     #     the attacker so that the king is no longer in check
-
+    false
   end
 
   def check?(team_color)
@@ -246,14 +272,16 @@ class Board
     end
   end
 
-  def [](row, col)
-    @squares[row][col]
-  end
-
-  def []=(pos)
+  def [](pos)
     row = pos[0]
     col = pos[1]
     @squares[row][col]
+  end
+
+  def []=(pos, value)
+    row = pos[0]
+    col = pos[1]
+    @squares[row][col] = value
   end
 
 end
@@ -281,10 +309,9 @@ end
 
 
 module Slider
-  def potential_moves(pos)
+  def potential_moves(pos, color)
     potential_moves = []
     posx, posy = pos
-    potential_moves = []
     move_dir.each do |dx,dy|
       newy = posy
       newx = posx
@@ -294,15 +321,14 @@ module Slider
         potential_moves << [newx, newy]
       end
     end
-    potential_moves.select! { |x, y| x.between?(0,7) && y.between?(0,7) }
+    potential_moves.select { |x, y| x.between?(0,7) && y.between?(0,7) }
   end
 end
 
 module Stepper
-  def potential_moves(pos)
+  def potential_moves(pos, color)
     potential_moves = []
     posx, posy = pos
-    potential_moves = []
     move_dir.each do |dx,dy|
       newy = posy
       newx = posx
@@ -310,7 +336,7 @@ module Stepper
       newy += dy
       potential_moves << [newx, newy]
     end
-    potential_moves.select! { |x, y| x.between?(0,7) && y.between?(0,7) }
+    potential_moves.select { |x, y| x.between?(0,7) && y.between?(0,7) }
   end
 end
 
@@ -324,14 +350,30 @@ class Piece
 end
 
 class Pawn < Piece
-  include Stepper
-
   def initialize(color)
     super(color)
   end
 
+  def potential_moves(pos, color)
+    #
+    potential_moves_arr = []
+    posx, posy = pos
+    move_dir.each do |dx,dy|
+      if color == :white
+        dx *= -1
+        dy *= -1
+      end
+      newy = posy
+      newx = posx
+      newx += dx
+      newy += dy
+      potential_moves_arr << [newx, newy]
+    end
+    potential_moves_arr.select { |x, y| x.between?(0,7) && y.between?(0,7) }
+  end
+
   def move_dir
-    [[0,1],[1,1],[-1,1],[0,2]]
+    [[1,0],[2,0],[1,1],[1,-1]]
   end
 
 end
@@ -401,6 +443,10 @@ class Queen < Piece
   end
 
 end
+
+g = Game.new
+
+g.run
 
 =begin
 
