@@ -284,7 +284,7 @@ class Pawn < Piece ### complicated case, not dealt with yet
   end
 
   def move_dir
-    [[0,1],[1,1],[1,-1],[0,2]]
+    [[0,1],[1,1],[-1,1],[0,2]]
   end
 
 end
