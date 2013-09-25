@@ -133,10 +133,36 @@ class Board
     end
   end
 
+  def valid_moves(pos1, pos2)
+    potential_moves = @squares[pos1[0]][pos1[1]].potential_moves(pos1)
+    #
+    # potential_moves.delete_if(#off the board, calculate with pos1)
+    # potential_moves.delete_if(#move doesn't skip over a piece, so every pos1[0])
+    # potential_moves.delete_if(#king is in check after move)
+    # potential_moves.delete_if(#moving onto your own piece)
+
+    valid_moves = potential_moves
+
+  end
+
+  def valid_move?(pos1, pos2)
+
+    valid_moves.include?()
+
+  end
+
+
+
   def checkmate?(team_color)
     king = find_king(team_color)
 
-    false
+    #  1) king is in check
+    #  2) every move the king makes puts him in check
+    # => loop through every valid move for the king, see if he's in check afterwards
+    #  3) none of his pieces can move between him and the attacker so that he's no longer in check'
+    # => loop through every other piece and see if a valid move from them puts them in between
+    #     the attacker so that the king is no longer in check
+
   end
 
   def check?(team_color)
@@ -209,23 +235,36 @@ end
 
 
 module Slider
-  def valid_moves
-    # recursively build move branch
-    []
-  end
-
-  def moves
-
+  def potential_moves(pos)
+    potential_moves = []
+    posx, posy = pos
+    potential_moves = []
+    move_dir.each do |dx,dy|
+      newy = posy
+      newx = posx
+      7.times do
+        newx += dx
+        newy += dy
+        potential_moves << [newx, newy]
+      end
+    end
+    potential_moves.select! { |x, y| x.between?(0,7) && y.between?(0,7) }
   end
 end
 
 module Stepper
-  def valid_moves
-    []
-  end
-
-  def moves
-
+  def potential_moves(pos)
+    potential_moves = []
+    posx, posy = pos
+    potential_moves = []
+    move_dir.each do |dx,dy|
+      newy = posy
+      newx = posx
+      newx += dx
+      newy += dy
+      potential_moves << [newx, newy]
+    end
+    potential_moves.select! { |x, y| x.between?(0,7) && y.between?(0,7) }
   end
 end
 
@@ -236,25 +275,16 @@ class Piece
     @color = team_color
   end
 
-
-  def valid_move?(pos1, pos2)
-
-  end
-
-  def valid_moves
-    []
-  end
-
 end
 
-class Pawn < Piece
+class Pawn < Piece ### complicated case, not dealt with yet
 
   def initialize(color)
     super(color)
   end
 
   def move_dir
-
+    [[0,1],[1,1],[1,-1],[0,2]]
   end
 
 end
@@ -264,10 +294,11 @@ class Rook < Piece
 
   def initialize(color)
     super(color)
+
   end
 
   def move_dir
-
+    [[1,0],[0,-1],[-1,0],[0,1]]
   end
 
 end
@@ -280,7 +311,7 @@ class Bishop < Piece
   end
 
   def move_dir
-
+    [[1,1],[1,-1],[-1,-1],[-1,1]]
   end
 
 end
@@ -293,7 +324,7 @@ class Knight < Piece
   end
 
   def move_dir
-
+    [[1,2],[2,1],[2,-1],[1,-2],[-1,-2],[-2,-1],[-2,1],[-1,2]]
   end
 
 end
@@ -306,7 +337,7 @@ class King < Piece
   end
 
   def move_dir
-
+    [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]]
   end
 
 end
@@ -319,7 +350,7 @@ class Queen < Piece
   end
 
   def move_dir
-
+    [[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1],[-1,0],[-1,1]]
   end
 
 end
