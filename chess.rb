@@ -15,7 +15,7 @@ class Game
     welcome
     until game_finished?
       @board.display
-
+      puts "You are in check!" if @board.check?(@current_player.team_color)
       begin
         start_pos, end_pos = @current_player.move_prompt
         @board.move(start_pos, end_pos, @current_player.team_color)
@@ -146,7 +146,6 @@ class Board
 
     piece = self[pos1]
     test_moves = piece.potential_moves(pos1, team_color)
-
     # pawn goes first because it is exceptional
     if piece.is_a?(Pawn)
       invalid_moves = []
@@ -168,8 +167,11 @@ class Board
       if self[test_moves[2]].nil? || self[test_moves[2]].color == team_color
         invalid_moves << test_moves[2]
       end
-      if self[test_moves[3]].nil? || self[test_moves[3]].color == team_color
-        invalid_moves << test_moves[3]
+
+      unless test_moves[3].nil?
+        if self[test_moves[3]].nil? || self[test_moves[3]].color == team_color
+          invalid_moves << test_moves[3]
+        end
       end
 
       test_moves.delete_if{ |move| invalid_moves.include?(move) }
@@ -185,8 +187,6 @@ class Board
       test_moves.keep_if { |test_pos| path_is_clear?(pos1, test_pos) }
     end
 
-
-    #move doesn't skip over a piece (if slider)
     #test_moves.delete_if(#move doesn't skip over a piece)
 
     # test_moves.delete_if(#king is in check after move)
@@ -232,10 +232,11 @@ class Board
 
     @squares.each_with_index do |row, row_index|
       row.each_with_index do |square_contents, col_index|
+        attacking_team_color = (team_color == :black) ? :white : :black
         next if square_contents.nil?
         piece = square_contents
         if piece.color != team_color
-          return true if false # if piece.valid_moves.include?(king_pos)
+          return true if valid_moves([row_index, col_index], attacking_team_color).include?(king_pos)
         end
       end
     end
