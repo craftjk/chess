@@ -14,10 +14,9 @@ class Game
     until game_finished?
       @board.display
 
-      successful_move = false
-      begin #until successful_move
+      begin
         start_pos, end_pos = @current_player.move_prompt
-        successful_move = @board.move(start_pos, end_pos, @current_player.team_color)
+        @board.move(start_pos, end_pos, @current_player.team_color)
         break if @board.checkmate?
       rescue ArgumentError => e #end
         puts "Invalid move. #{e.message}"
@@ -134,11 +133,24 @@ class Board
     end
   end
 
-  def checkmate?#(team_color)
+  def checkmate?(team_color)
+    king = find_king(team_color)
+
     false
   end
 
   def check?(team_color)
+    king_pos = find_king(team_color)
+
+    @squares.each_with_index do |row, row_index|
+      row.each_with_index do |square_contents, col_index|
+        next if square_contents.nil?
+        piece = square_contents
+        if piece.color != team_color
+          return true if piece.valid_moves.include?(king_pos)
+        end
+      end
+    end
     false
   end
 
@@ -160,7 +172,6 @@ class Board
     end
     puts
   end
-
 
   def find_king(team_color)
     @squares.each_with_index do |row, row_index|
@@ -200,7 +211,7 @@ end
 module Slider
   def valid_moves
     # recursively build move branch
-
+    []
   end
 
   def moves
@@ -210,7 +221,7 @@ end
 
 module Stepper
   def valid_moves
-
+    []
   end
 
   def moves
@@ -228,6 +239,10 @@ class Piece
 
   def valid_move?(pos1, pos2)
 
+  end
+
+  def valid_moves
+    []
   end
 
 end
