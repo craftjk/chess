@@ -14,6 +14,7 @@ class Game
   def run
     welcome
     until game_finished?
+      puts "#{@board.object_id}"
       @board.display
       puts "You are in check!" if @board.check?(@current_player.team_color)
       begin
@@ -42,7 +43,7 @@ class Game
 
     def display_results
       switch_players
-      puts "Checkmate. #{current_player.name} wins!"
+      puts "Checkmate. #{@current_player.name} wins!"
     end
 
     def welcome
@@ -104,14 +105,44 @@ class Board
   end
 
   def move(pos1, pos2, team_color)
-
     pre_move_validation(pos1, pos2, team_color)
-    # try the move to test for check and checkmate
-    #target_contents = origin_contents
 
-    # squares_dup[pos1[0]][pos1[1]] = nil
-    #post_validation(pos1, pos2, team_color)
+    # store what's in the square we want to move into, into a variable
+    pos2_obj = self[pos2]
 
+    # make the move and check that it's valid
+    self[pos2], self[pos1] = self[pos1], nil
+
+
+    # if invalid, return piece to pos1 and have pos2 = variable
+    # raise error
+
+    if check?(team_color)
+      self[pos1], self[pos2] = self[pos2], pos2_obj
+      raise ArgumentError.new "You are still in check, try again."
+    end
+
+  end
+
+  def avoid_checkmate?(pos1, pos2, team_color)
+    # store what's in the square we want to move into, into a variable
+    pos2_obj = self[pos2]
+
+    # make the move and check that it's valid
+    self[pos2], self[pos1] = self[pos1], nil
+
+
+    # if invalid, return piece to pos1 and have pos2 = variable
+    # raise error
+
+    if !check?(team_color)
+      self[pos1], self[pos2] = self[pos2], pos2_obj
+      return true
+    else
+      self[pos1], self[pos2] = self[pos2], pos2_obj
+    end
+
+    return false
   end
 
   def pre_move_validation(pos1, pos2, team_color)
@@ -124,23 +155,20 @@ class Board
       raise ArgumentError.new "Can't move onto your own piece, pick again."
     elsif !valid_move?(pos1, pos2, team_color)
       raise ArgumentError.new "Invalid move."
-    else
-      self[pos2] = self[pos1]
-      self[pos1] = nil
     end
-
+    true
   end
-
-  def post_move_validation(pos1, pos2, team_color)
-    squares_dup = @squares.dup
-    # perform the move
-    if check?(squares_dup)
-      #raise ArgumentError.new "You are still in check, try again."
-    else # perform the move on the original board
-      self[pos2] = self[pos1]
-      self[pos1] = nil
-    end
-  end
+  #
+  # def validate_move(pos1, pos2, team_color)
+  #   test_board = deep_dup(@squares)
+  #   test_board[pos2[0]][pos2[1]] = test_board[pos1[0]][pos1[1]]
+  #   test_board[pos1[0]][pos1[1]] = nil
+  #
+  #   if test_board.check?(team_color)
+  #     raise ArgumentError.new "You are still in check, try again."
+  #   end
+  #   true
+  # end
 
   def valid_moves(pos1, team_color)
 
@@ -218,7 +246,22 @@ class Board
 
 
   def checkmate?(team_color)
-    # king = find_king(team_color)
+    king_pos = find_king(team_color)
+    attacking_team_color = (team_color == :black) ? :white : :black
+
+    checkmate_avoided = false
+    @squares.each_with_index do |row, row_index|
+      row.each_with_index do |square_contents, col_index|
+        next if square_contents.nil?
+        piece = square_contents
+        if piece.color == team_color
+          valid_moves([row_index, col_index], team_color).each do |move|
+            checkmate_avoided = avoid_checkmate?([row_index, col_index], move, team_color)
+            return true if checkmate_avoided == true
+          end
+        end
+      end
+    end
 
     #  1) king is in check
     #  3) none of his pieces can move between him and the attacker so that he's no longer in check'
@@ -229,10 +272,10 @@ class Board
 
   def check?(team_color)
     king_pos = find_king(team_color)
+    attacking_team_color = (team_color == :black) ? :white : :black
 
     @squares.each_with_index do |row, row_index|
       row.each_with_index do |square_contents, col_index|
-        attacking_team_color = (team_color == :black) ? :white : :black
         next if square_contents.nil?
         piece = square_contents
         if piece.color != team_color
@@ -243,6 +286,17 @@ class Board
     false
   end
 
+  def deep_dup(array)
+    deep_copy = []
+    array.each do |check_case|
+      if check_case.is_a?(Array)
+        deep_copy << deep_dup(check_case)
+      else
+        deep_copy << check_case.dup unless check_case.nil?
+      end
+    end
+    deep_copy
+  end
 
   def display
     puts
@@ -445,9 +499,20 @@ class Queen < Piece
 
 end
 
+
+
+
 g = Game.new
 
+
+g.board.move([6,4],[4,4], :white)
+g.board.move([1,6],[3,6], :black)
+g.board.move([6,0],[5,0], :white)
+g.board.move([1,5],[2,5], :black)
+
 g.run
+
+
 
 =begin
 
